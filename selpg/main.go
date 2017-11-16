@@ -1,85 +1,180 @@
 package main
 
 import (
+	"bufio"
+	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
-	"strings"
+	"os/exec"
 )
 
 var (
-	s        int
-	e        int
-	l        int
-	f        bool
-	d        string
-	filepath string
+	flagSet = flag.NewFlagSet(os.Args[0], flag.PanicOnError)
+	start   = flagSet.Int("s", 0, "The start page number")
+	end     = flagSet.Int("e", 0, "The end page number")
+	l       = flagSet.Int("l", 72, "The number of line in one page")
+	f       = flagSet.Bool("f", false, "read one page until '\f' ")
+	d       = flagSet.String("d", "", "transport the output to other cmd")
 )
 
-func captureArgs() {
-	flag.IntVar(&s, "s", 0, "specify the start line number to selpg(default 0)")
-	flag.IntVar(&e, "e", 0, "specify the end line number to selpg(default 0)")
-	flag.IntVar(&l, "l", 72, "specify the number of lines per page(default 72)")
-	flag.BoolVar(&f, "f", false, "specify whether use character \\f to do paging")
-	flag.StringVar(&d, "d", "", "specify the printer")
-	if flag.NArg() > 0 {
-		filepath = flag.Arg(0)
-	}
-	flag.Parse()
+func printError(message string) {
+	err := errors.New(message)
+	fmt.Fprintln(os.Stderr, "error=>", err)
 }
 
-func validateArgs() bool {
-	if e == 0 {
-		fmt.Printf("must specify -e")
+func checkForSE() bool {
+	if len(os.Args) <= 2 {
+		printError("-s and -e option are both in need")
 		return false
 	}
-	if s > e {
-		fmt.Printf("-s must <= -e")
+	if os.Args[1][0:2] != "-s" {
+		printError("-s must be first option")
 		return false
 	}
-	if s < 1 || e < 1 {
-		fmt.Printf("-s or -e must be positive")
+	if os.Args[2][0:2] != "-e" {
+		printError("-e must be second option")
 		return false
 	}
-	if l <= 0 {
-		fmt.Printf("-l must be positive")
+	if *start <= 0 || *end <= 0 {
+		printError("-s and -e must be bigger than 0")
+		return false
 	}
-	if f && l != 72 {
-		fmt.Printf("-f and -l can not be both provided")
+	if *start > *end {
+		printError("-s must be smaller than -e")
+		return false
+	}
+	if *l <= 0 {
+		printError("-l must be bigger than 0")
+		return false
 	}
 	return true
 }
 
-func readTextFromFile() string {
-	b, err := ioutil.ReadFile(filepath)
-	if err != nil {
-		fmt.Print(err)
-		os.Exit(1)
+func fileIO(Ibuf *bufio.Reader, Obuf *os.File) {
+	count := *end - *start + 1
+	var stdin io.WriteCloser
+	var stdinErr error
+	var cmd *exec.Cmd
+	if *d != "" {
+		cmd = exec.Command(*d)
+		stdin, stdinErr = cmd.StdinPipe()
+		if stdinErr != nil {
+			fmt.Fprintln(os.Stderr, "error=>", stdinErr.Error())
+		}
 	}
-	text := string(b)
-	return text
-}
-
-func main() {
-	captureArgs()
-	validateArgs()
-	if filepath != "" {
-		text := readTextFromFile()
-		if f { // -f
-			pages := strings.Split(text, "\f")
-			for i := s; i != e; i++ {
-				fmt.Fprintf(os.Stdout, "%s\f", pages[i])
+	if !*f {
+		for i := 1; i < *start; i++ {
+			for j := 0; j < *l; j++ {
+				Ibuf.ReadString('\n')
 			}
-		} else {
-			lines := strings.Split(text, "\n")
-			sLines := (s - 1) * l
-			eLines := e * l
-			for i := sLines; i != eLines; i++ {
-				fmt.Fprintf(os.Stdout, "%s\n", lines[i])
+		}
+		for i := 0; i < count; i++ {
+			for j := 0; j < *l; j++ {
+				line, err := Ibuf.ReadString('\n')
+				if err != nil {
+					if err == io.EOF && i != count && j != *l {
+						printError("no enough page of the file")
+						return
+					} else {
+						fmt.Fprint(os.Stderr, "error=>", err.Error())
+					}
+				}
+				if *d != "" {
+					_, err = stdin.Write([]byte(line))
+					if err != nil {
+						fmt.Fprint(os.Stderr, "error=>", err.Error())
+					}
+					continue
+				}
+				if Obuf != nil {
+					Obuf.WriteString(line)
+				} else {
+					fmt.Print(line)
+				}
+			}
+		}
+		if *d != "" {
+			stdin.Close()
+			cmd.Stdout = os.Stdout
+			err := cmd.Run()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error=>", stdinErr.Error())
+			}
+		}
+	} else {
+		for i := 1; i < *start; i++ {
+			Ibuf.ReadString('\f')
+		}
+		for i := 0; i < count; i++ {
+			line, err := Ibuf.ReadString('\f')
+			if err != nil {
+				if err == io.EOF && i != count {
+					printError("no enough page of the file")
+					return
+				} else {
+					fmt.Fprint(os.Stderr, "error=>", err.Error())
+				}
+			}
+			if *d != "" {
+				_, err = stdin.Write([]byte(line))
+				if err != nil {
+					fmt.Fprint(os.Stderr, "error=>", err.Error())
+				}
+				continue
+			}
+			if Obuf != nil {
+				Obuf.WriteString(line)
+			} else {
+				fmt.Print(line)
+			}
+		}
+		if *d != "" {
+			stdin.Close()
+			cmd.Stdout = os.Stdout
+			err := cmd.Run()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error=>", "-d must must a valid command that need input")
 			}
 		}
 	}
-	// text := GetTextFromFile("/Users/painterdrown/test")
-	// lines := strings.Split(text, "\n")
+}
+
+func tranData(inputFilePath string, outputFilePath string) {
+	var Ibuf *bufio.Reader
+	if inputFilePath != "" {
+		inputFile, err := os.OpenFile(inputFilePath, os.O_RDWR, 0644)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error=>", err.Error())
+		}
+		Ibuf = bufio.NewReader(inputFile)
+	} else {
+		Ibuf = bufio.NewReader(os.Stdin)
+	}
+	var Obuf *os.File
+	var err error
+	if outputFilePath != "" {
+		Obuf, err = os.OpenFile(outputFilePath, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0644)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error=>", "-d must must a valid command that need input")
+		}
+	} else {
+		Obuf = nil
+	}
+	fileIO(Ibuf, Obuf)
+}
+func main() {
+	flagSet.Parse(os.Args[1:])
+	if checkForSE() {
+		var inputFile = ""
+		var outputFile = ""
+		if flagSet.NArg() > 0 {
+			inputFile = flagSet.Arg(0)
+		}
+		if flagSet.NArg() > 1 {
+			outputFile = flagSet.Arg(1)
+		}
+		tranData(inputFile, outputFile)
+	}
 }
