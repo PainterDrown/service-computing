@@ -39,12 +39,13 @@
 ### 2. 处理 JSON 请求
 
 在浏览器访问：http://localhost:2222/json ，可以得到 JSON 文本数据。
+
 ![image](README/2.1.png)
 
 ### 3. 处理表单提交
 
-上传表单到：http://localhost:2222/form ，这里我是用 Postman 进行表单的提交。
-需要同时提供：first_name 和 last_name 参数后，才会返回 Hello 文本，否则会提示缺乏相应参数。
+上传表单到：http://localhost:2222/form ，这里我是用 Postman 进行表单的提交。需要同时提供：first_name 和 last_name 参数后，才会返回 Hello 文本，否则会提示缺乏相应参数。
+
 ![image](README/3.1.png)
 ![image](README/3.2.png)
 ![image](README/3.3.png)
@@ -53,4 +54,5 @@
 ### 4. 自定义 Not Implemented 页面
 
 在浏览器访问：http://localhost:2222/unknown ，可以看到自定义的 Not Implemented 页面。
+
 ![image](README/4.1.png)
