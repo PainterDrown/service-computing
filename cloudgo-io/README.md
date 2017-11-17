@@ -31,9 +31,11 @@
 ### 1. 静态文件
 
 在浏览器访问：http://localhost:2222/assets ，由于我以及添加了 index.html 主页面，所以访问的结果是 index.html 对于的网页内容。
+
 ![image](README/1.1.png)
 
 如果要查看静态文件列表，可以访问：http://localhost:2222/assets/css 。
+
 ![image](README/1.2.png)
 
 ### 2. 处理 JSON 请求
