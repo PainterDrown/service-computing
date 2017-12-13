@@ -10,7 +10,7 @@ var db *sql.DB
 
 func init() {
 	var err error
-	db, err = sql.Open("sqlite3", "./test.db")
+	db, err = sql.Open("sqlite3", "./agenda.db")
 	if err != nil {
 		panic("数据库连接错误")
 	}
