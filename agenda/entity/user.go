@@ -25,8 +25,7 @@ func Register(username, password string) error {
 	// 检查是否被注册
 	user := User{}
 	row := db.QueryRow(findUserByUsername, username)
-	err = row.Scan(&user.Username, &user.Password)
-	checkErr(err)
+	row.Scan(&user.Username, &user.Password)
 	if user.Username != "" {
 		return errors.New("该用户已被注册")
 	}

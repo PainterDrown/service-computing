@@ -35,8 +35,7 @@ func CreateMeeting(username, title, participators, stime, etime string) error {
 	// 检查会议的标题是否已存在
 	meeting := Meeting{}
 	row := db.QueryRow(queryMeetingByTitle, title)
-	err = row.Scan(&meeting.Title, &meeting.Sponsor, &meeting.Participators, &meeting.Stime, &meeting.Etime)
-	checkErr(err)
+	row.Scan(&meeting.Title, &meeting.Sponsor, &meeting.Participators, &meeting.Stime, &meeting.Etime)
 	if meeting.Title != "" {
 		return errors.New("会议标题已存在")
 	}
@@ -62,7 +61,7 @@ func QueryMeetings(username, stime, etime string) ([]Meeting, error) {
 	meetings := make([]Meeting, 0, 0)
 	for rows.Next() {
 		meeting := Meeting{}
-		err = rows.Scan(&meeting.Title, &meeting.Sponsor, &meeting.Participants, &meeting.Stime, &meeting.Etime)
+		err = rows.Scan(&meeting.Title, &meeting.Sponsor, &meeting.Participators, &meeting.Stime, &meeting.Etime)
 		checkErr(err)
 		meetings = append(meetings, meeting)
 	}
@@ -84,7 +83,7 @@ func DeleteParticipator(username, title, participator string) error {
 	var err error
 	meeting := Meeting{}
 	row := db.QueryRow(queryMeetingByTitle, username)
-	err = row.Scan(&meeting.Title, &meeting.Sponsor, &meeting.Participators, &meeting.Stime, &meeting.Etime)
+	row.Scan(&meeting.Title, &meeting.Sponsor, &meeting.Participators, &meeting.Stime, &meeting.Etime)
 	if meeting.Title == "" {
 		return errors.New("该会议不存在")
 	}
@@ -107,7 +106,7 @@ func DeleteMeeting(username, title string) error {
 	var err error
 	meeting := Meeting{}
 	row := db.QueryRow(queryMeetingByTitle, username)
-	err = row.Scan(&meeting.Title, &meeting.Sponsor, &meeting.Participators, &meeting.Stime, &meeting.Etime)
+	row.Scan(&meeting.Title, &meeting.Sponsor, &meeting.Participators, &meeting.Stime, &meeting.Etime)
 	if meeting.Title == "" {
 		return errors.New("该会议不存在")
 	}
