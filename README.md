@@ -1,6 +1,6 @@
 # service-computing
 
-A collection of the service computing course homework of mine.
+> A collection of the service computing course homework of mine.
 
 ## Usage
 
